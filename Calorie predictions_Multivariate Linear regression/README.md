@@ -22,7 +22,7 @@ This model is trained to predict **calories burned** during physical activity us
 | `Height`     | Height in centimeters. Affects BMI and indirectly influences energy needs. |
 | `Weight`     | Weight in kilograms. A key factor in energy burned during activity. |
 | `Duration`   | Duration of physical activity in minutes. Direct measure of exercise volume. |
-| `Heart_Rate` | Heart rate during activity (bpm). Reflects intensity of physical effort. |
+| `Heart_Rate` | Heart rate during activity (in beats per minute). Reflects intensity of the physical effort.
 | `Body_Temp`  | Body temperature during activity (°C). Indicates metabolic response to exertion. |
 | `Calories`   | **Target variable** — total calories burned during the activity session. |
 
