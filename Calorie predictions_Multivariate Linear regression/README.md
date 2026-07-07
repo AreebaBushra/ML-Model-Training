@@ -5,12 +5,26 @@ A simple linear regression project to predict calories burned during exercise.
 ## Author
 Areeba Bushra
 
-## Dataset
+## Dataset Description
 - Source: [Calorie Expenditure Dataset (Google Drive)](https://drive.google.com/file/d/1tj_WGyspImVxlpzL1KSzu2fzLsTxPKWN/view?usp=sharing)
 - 750,000 training rows
 - 250,000 test rows
 - Target column: `Calories`
 - Features: Sex, Age, Height, Weight, Duration, Heart_Rate, Body_Temp
+
+This model is trained to predict **calories burned** during physical activity using the following features:
+
+| Column       | Description |
+|--------------|-------------|
+| `id`         | Unique identifier for each sample (used for aligning predictions in the submission file). |
+| `Sex`        | Biological sex of the individual (`male` / `female`). Affects calorie expenditure due to physiological differences. |
+| `Age`        | Age of the individual in years. Influences metabolism and energy consumption. |
+| `Height`     | Height in centimeters. Affects BMI and indirectly influences energy needs. |
+| `Weight`     | Weight in kilograms. A key factor in energy burned during activity. |
+| `Duration`   | Duration of physical activity in minutes. Direct measure of exercise volume. |
+| `Heart_Rate` | Heart rate during activity (bpm). Reflects intensity of physical effort. |
+| `Body_Temp`  | Body temperature during activity (°C). Indicates metabolic response to exertion. |
+| `Calories`   | **Target variable** — total calories burned during the activity session. |
 
 ## What This Notebook Does
 1. Loads the dataset from Google Drive (Google Colab).
