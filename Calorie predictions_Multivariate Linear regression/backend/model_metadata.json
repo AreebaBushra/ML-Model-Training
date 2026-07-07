@@ -1,0 +1,36 @@
+{
+  "algorithm": "Multivariate Linear Regression",
+  "features": [
+    "Gender (Sex_enc)",
+    "Age",
+    "Height",
+    "Weight",
+    "Duration",
+    "Heart_Rate",
+    "Body_Temp"
+  ],
+  "feature_order": [
+    "Sex_enc",
+    "Age",
+    "Height",
+    "Weight",
+    "Duration",
+    "Heart_Rate",
+    "Body_Temp"
+  ],
+  "dataset": "Calorie Expenditure (750,000 training rows)",
+  "train_test_split": {
+    "test_size": 0.2,
+    "random_state": 3
+  },
+  "sex_encoding": {
+    "male": 1,
+    "female": 0
+  },
+  "metrics": {
+    "r2_score": 0.968459160217948,
+    "rmse": 11.085954548194191,
+    "mae": 8.090715367862517
+  },
+  "author": "Areeba Bushra"
+}
