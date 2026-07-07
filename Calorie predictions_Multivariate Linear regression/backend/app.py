@@ -7,11 +7,14 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+
+STATIC_DIR = ROOT / "static"
 
 from backend.model_loader import get_model_bundle, load_model_bundle
 from backend.predictor import predict_calories
@@ -61,8 +64,20 @@ async def unhandled_exception_handler(_: Request, exc: Exception):
     )
 
 
-@app.get("/", tags=["System"])
-async def root() -> dict:
+if STATIC_DIR.exists():
+    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+
+@app.get("/", tags=["System"], include_in_schema=False)
+async def root() -> FileResponse:
+    index_path = STATIC_DIR / "index.html"
+    if index_path.exists():
+        return FileResponse(index_path)
+    raise HTTPException(status_code=404, detail="UI not found")
+
+
+@app.get("/api", tags=["System"])
+async def api_info() -> dict:
     return {
         "service": "Calorie Prediction API",
         "docs": "/docs",

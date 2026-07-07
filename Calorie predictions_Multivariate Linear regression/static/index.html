@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Calorie Burn Predictor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d1321;
+    --bg-panel: #141b2e;
+    --ember: #ff5d3a;
+    --ember-soft: rgba(255, 93, 58, 0.15);
+    --teal: #2dd4bf;
+    --teal-soft: rgba(45, 212, 191, 0.12);
+    --text: #eef1f7;
+    --text-dim: #8b93a7;
+    --border: #232c42;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+  }
+  h1, h2, h3, .display {
+    font-family: 'Space Grotesk', sans-serif;
+  }
+  .wrap {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 2.5rem 1.5rem 4rem;
+  }
+  .hero {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    margin-bottom: 2.5rem;
+  }
+  .pulse-wrap {
+    flex-shrink: 0;
+    width: 92px;
+    height: 92px;
+    border-radius: 50%;
+    background: var(--ember-soft);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .pulse-wrap svg { width: 60px; height: 60px; }
+  .pulse-line {
+    stroke: var(--ember);
+    stroke-width: 2.5;
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 120;
+    stroke-dashoffset: 0;
+    animation: pulse-draw 1.8s ease-in-out infinite;
+  }
+  @keyframes pulse-draw {
+    0% { stroke-dashoffset: 120; opacity: 0.3; }
+    50% { stroke-dashoffset: 0; opacity: 1; }
+    100% { stroke-dashoffset: -120; opacity: 0.3; }
+  }
+  .hero h1 {
+    font-size: 1.9rem;
+    font-weight: 700;
+    margin: 0 0 0.3rem 0;
+    letter-spacing: -0.01em;
+  }
+  .hero p {
+    margin: 0;
+    color: var(--text-dim);
+    font-size: 0.98rem;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+  }
+  @media (max-width: 800px) {
+    .grid { grid-template-columns: 1fr; }
+  }
+  .panel {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 1.75rem;
+  }
+  .panel h2 {
+    font-size: 1.05rem;
+    margin: 0 0 1.25rem 0;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.9rem;
+  }
+  .field { margin-bottom: 0.9rem; }
+  .field label {
+    display: block;
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    margin-bottom: 0.35rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .field select, .field input {
+    width: 100%;
+    background: #0b1120;
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 10px;
+    padding: 0.6rem 0.75rem;
+    font-size: 0.95rem;
+    font-family: 'Inter', sans-serif;
+  }
+  .field select:focus, .field input:focus {
+    outline: none;
+    border-color: var(--ember);
+  }
+  button.predict-btn {
+    width: 100%;
+    background: var(--ember);
+    color: #14100d;
+    border: none;
+    border-radius: 12px;
+    padding: 0.85rem;
+    font-size: 1rem;
+    font-weight: 600;
+    font-family: 'Space Grotesk', sans-serif;
+    cursor: pointer;
+    margin-top: 0.5rem;
+    transition: transform 0.12s ease, opacity 0.12s ease;
+  }
+  button.predict-btn:hover { opacity: 0.92; }
+  button.predict-btn:active { transform: scale(0.98); }
+  button.predict-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .result-empty {
+    color: var(--text-dim);
+    font-size: 0.92rem;
+    line-height: 1.6;
+  }
+  .result-hero {
+    text-align: center;
+    padding: 1.25rem 0 1.5rem;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 1.25rem;
+  }
+  .result-hero .kcal {
+    font-size: 3rem;
+    font-weight: 700;
+    color: var(--ember);
+    line-height: 1;
+  }
+  .result-hero .kcal-label {
+    color: var(--text-dim);
+    font-size: 0.85rem;
+    margin-top: 0.4rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .stat-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.55rem 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.92rem;
+  }
+  .stat-row:last-of-type { border-bottom: none; }
+  .stat-row .val { color: var(--teal); font-weight: 600; }
+  .tips {
+    margin-top: 1.25rem;
+  }
+  .tips h3 {
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-dim);
+    margin: 0 0 0.6rem 0;
+  }
+  .tips ul { margin: 0; padding-left: 1.1rem; }
+  .tips li { margin-bottom: 0.4rem; font-size: 0.9rem; color: var(--text); }
+  .summary-box {
+    margin-top: 1.25rem;
+    background: var(--teal-soft);
+    border: 1px solid rgba(45, 212, 191, 0.3);
+    border-radius: 12px;
+    padding: 0.9rem 1rem;
+    font-size: 0.9rem;
+  }
+  .error-box {
+    background: rgba(255, 93, 58, 0.12);
+    border: 1px solid var(--ember);
+    border-radius: 12px;
+    padding: 0.9rem 1rem;
+    font-size: 0.9rem;
+    color: #ffb3a0;
+  }
+  .status-line {
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    margin-top: 2rem;
+    text-align: center;
+  }
+  .status-dot {
+    display: inline-block;
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--text-dim);
+    margin-right: 0.4rem;
+  }
+  .status-dot.ok { background: var(--teal); }
+  .status-dot.bad { background: var(--ember); }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="hero">
+      <div class="pulse-wrap">
+        <svg viewBox="0 0 100 40" xmlns="http://www.w3.org/2000/svg">
+          <path class="pulse-line" d="M0 20 L25 20 L32 5 L40 35 L48 20 L100 20" />
+        </svg>
+      </div>
+      <div>
+        <h1>Calorie Burn Predictor</h1>
+        <p>Multivariate linear regression, trained on 750,000 exercise sessions.</p>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="panel">
+        <h2>Your session</h2>
+        <form id="predict-form">
+          <div class="field-row">
+            <div class="field">
+              <label>Gender</label>
+              <select id="gender">
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Age</label>
+              <input type="number" id="age" value="30" min="10" max="100" />
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>Height (cm)</label>
+              <input type="number" id="height" value="170" min="100" max="250" step="0.1" />
+            </div>
+            <div class="field">
+              <label>Weight (kg)</label>
+              <input type="number" id="weight" value="70" min="30" max="200" step="0.1" />
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>Duration (min)</label>
+              <input type="number" id="duration" value="30" min="1" max="300" step="0.5" />
+            </div>
+            <div class="field">
+              <label>Heart rate (bpm)</label>
+              <input type="number" id="heart_rate" value="120" min="50" max="220" step="1" />
+            </div>
+          </div>
+          <div class="field">
+            <label>Body temperature (°C)</label>
+            <input type="number" id="body_temp" value="39.5" min="35" max="42" step="0.1" />
+          </div>
+          <button type="submit" class="predict-btn" id="submit-btn">Predict calories burned</button>
+        </form>
+        <div class="status-line" id="status-line">
+          <span class="status-dot" id="status-dot"></span><span id="status-text">Checking API…</span>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Result</h2>
+        <div id="result-area">
+          <p class="result-empty">Fill in your session details and predict to see calories burned, BMI, workout intensity, and personalized suggestions here.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  const form = document.getElementById('predict-form');
+  const submitBtn = document.getElementById('submit-btn');
+  const resultArea = document.getElementById('result-area');
+  const statusDot = document.getElementById('status-dot');
+  const statusText = document.getElementById('status-text');
+
+  async function checkHealth() {
+    try {
+      const res = await fetch('/health');
+      const data = await res.json();
+      if (data.model_loaded) {
+        statusDot.classList.add('ok');
+        statusText.textContent = 'API online — model loaded';
+      } else {
+        statusDot.classList.add('bad');
+        statusText.textContent = 'API online — model not loaded';
+      }
+    } catch (e) {
+      statusDot.classList.add('bad');
+      statusText.textContent = 'API waking up… this can take up to a minute on first load';
+      setTimeout(checkHealth, 4000);
+    }
+  }
+  checkHealth();
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Predicting…';
+
+    const payload = {
+      gender: document.getElementById('gender').value,
+      age: parseInt(document.getElementById('age').value, 10),
+      height: parseFloat(document.getElementById('height').value),
+      weight: parseFloat(document.getElementById('weight').value),
+      duration: parseFloat(document.getElementById('duration').value),
+      heart_rate: parseFloat(document.getElementById('heart_rate').value),
+      body_temp: parseFloat(document.getElementById('body_temp').value),
+    };
+
+    try {
+      const res = await fetch('/predict', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.detail || 'Prediction failed');
+      }
+
+      const tipsHtml = data.suggestions.map(t => `<li>${t}</li>`).join('');
+      const equivHtml = data.equivalent_activities
+        .map(a => `<div class="stat-row"><span>${a.activity}</span><span class="val">~${a.duration_minutes} min</span></div>`)
+        .join('');
+
+      resultArea.innerHTML = `
+        <div class="result-hero">
+          <div class="kcal">${Math.round(data.predicted_calories)}</div>
+          <div class="kcal-label">kcal burned</div>
+        </div>
+        <div class="stat-row"><span>BMI</span><span class="val">${data.bmi} (${data.bmi_category})</span></div>
+        <div class="stat-row"><span>Workout intensity</span><span class="val">${data.workout_intensity} (${data.intensity_score}%)</span></div>
+        <div class="tips">
+          <h3>Personalized suggestions</h3>
+          <ul>${tipsHtml}</ul>
+        </div>
+        <div class="tips">
+          <h3>Equivalent activities</h3>
+          ${equivHtml}
+        </div>
+        <div class="summary-box">${data.summary}</div>
+      `;
+    } catch (err) {
+      resultArea.innerHTML = `<div class="error-box">Something went wrong: ${err.message}</div>`;
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Predict calories burned';
+    }
+  });
+</script>
+</body>
+</html>
