@@ -6,9 +6,11 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 import pandas as pd
+import streamlit as st
 
 ROOT = Path(__file__).resolve().parents[1]
 HISTORY_PATH = ROOT / "data" / "predictions_history.csv"
+SESSION_KEY = "prediction_history_rows"
 
 COLUMNS = [
     "timestamp",
@@ -35,9 +37,8 @@ def ensure_history_file() -> None:
             writer.writeheader()
 
 
-def save_prediction(inputs: Dict[str, Any], result: Dict[str, Any]) -> None:
-    ensure_history_file()
-    row = {
+def _build_row(inputs: Dict[str, Any], result: Dict[str, Any]) -> Dict[str, Any]:
+    return {
         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "gender": inputs["gender"],
         "age": inputs["age"],
@@ -52,25 +53,51 @@ def save_prediction(inputs: Dict[str, Any], result: Dict[str, Any]) -> None:
         "intensity_score": result["intensity_score"],
         "summary": result["summary"],
     }
-    with open(HISTORY_PATH, "a", newline="", encoding="utf-8") as file:
-        writer = csv.DictWriter(file, fieldnames=COLUMNS)
-        writer.writerow(row)
+
+
+def save_prediction(inputs: Dict[str, Any], result: Dict[str, Any]) -> None:
+    row = _build_row(inputs, result)
+
+    if SESSION_KEY not in st.session_state:
+        st.session_state[SESSION_KEY] = []
+    st.session_state[SESSION_KEY].insert(0, row)
+
+    try:
+        ensure_history_file()
+        with open(HISTORY_PATH, "a", newline="", encoding="utf-8") as file:
+            writer = csv.DictWriter(file, fieldnames=COLUMNS)
+            writer.writerow(row)
+    except OSError:
+        pass
 
 
 def load_history() -> pd.DataFrame:
-    ensure_history_file()
-    df = pd.read_csv(HISTORY_PATH)
-    if df.empty:
-        return df
-    df["timestamp"] = pd.to_datetime(df["timestamp"])
-    return df.sort_values("timestamp", ascending=False)
+    session_rows = st.session_state.get(SESSION_KEY, [])
+    if session_rows:
+        df = pd.DataFrame(session_rows)
+        df["timestamp"] = pd.to_datetime(df["timestamp"])
+        return df.sort_values("timestamp", ascending=False)
+
+    try:
+        ensure_history_file()
+        df = pd.read_csv(HISTORY_PATH)
+        if df.empty:
+            return df
+        df["timestamp"] = pd.to_datetime(df["timestamp"])
+        return df.sort_values("timestamp", ascending=False)
+    except (OSError, pd.errors.EmptyDataError):
+        return pd.DataFrame(columns=COLUMNS)
 
 
 def delete_history() -> None:
-    ensure_history_file()
-    with open(HISTORY_PATH, "w", newline="", encoding="utf-8") as file:
-        writer = csv.DictWriter(file, fieldnames=COLUMNS)
-        writer.writeheader()
+    st.session_state[SESSION_KEY] = []
+    try:
+        ensure_history_file()
+        with open(HISTORY_PATH, "w", newline="", encoding="utf-8") as file:
+            writer = csv.DictWriter(file, fieldnames=COLUMNS)
+            writer.writeheader()
+    except OSError:
+        pass
 
 
 def history_stats(df: pd.DataFrame) -> Dict[str, Any]:

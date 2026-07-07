@@ -9,8 +9,8 @@ DEFAULT_API_URL = os.getenv("CALORIE_API_URL", "http://127.0.0.1:8000")
 
 
 class APIClient:
-    def __init__(self, base_url: str = DEFAULT_API_URL, timeout: int = 30) -> None:
-        self.base_url = base_url.rstrip("/")
+    def __init__(self, base_url: str | None = None, timeout: int = 30) -> None:
+        self.base_url = (base_url or DEFAULT_API_URL).rstrip("/")
         self.timeout = timeout
 
     def health(self) -> Dict[str, Any]:
@@ -33,5 +33,5 @@ class APIClient:
         return response.json()
 
 
-def get_client() -> APIClient:
-    return APIClient()
+def get_client(base_url: str | None = None) -> APIClient:
+    return APIClient(base_url=base_url)

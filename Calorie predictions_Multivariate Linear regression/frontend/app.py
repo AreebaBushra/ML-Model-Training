@@ -1,11 +1,16 @@
 from __future__ import annotations
 
 import json
+import os
+import sys
 from pathlib import Path
 
 import plotly.graph_objects as go
-import requests
 import streamlit as st
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from frontend.api_client import get_client
 from frontend.history_store import (
@@ -14,31 +19,19 @@ from frontend.history_store import (
     load_history,
     save_prediction,
 )
+from frontend.local_predictor import is_model_ready, predict_locally
 from frontend.ui_helpers import inject_css, load_metadata, metric_card
 
-st.set_page_config(
-    page_title="Calorie Burn Predictor",
-    page_icon="🔥",
-    layout="wide",
-    initial_sidebar_state="expanded",
-)
 
-inject_css()
-
-ROOT = Path(__file__).resolve().parents[1]
-METADATA = load_metadata()
-METRICS = METADATA.get("metrics", {})
-
-
-def check_api_status() -> tuple[bool, str]:
-    try:
-        client = get_client()
-        data = client.health()
-        if data.get("status") == "ok" and data.get("model_loaded"):
-            return True, "API Online • Model Ready"
-        return False, "API Online • Model Not Loaded"
-    except Exception:
-        return False, "API Offline"
+def run_prediction(payload: dict) -> dict:
+    """Use FastAPI when CALORIE_API_URL is set and reachable; otherwise predict locally."""
+    api_url = os.getenv("CALORIE_API_URL")
+    if api_url:
+        try:
+            return get_client(api_url).predict(payload)
+        except Exception:
+            pass
+    return predict_locally(payload)
 
 
 def render_gauge(calories: float) -> None:
@@ -68,7 +61,7 @@ def render_gauge(calories: float) -> None:
     st.plotly_chart(fig, use_container_width=True)
 
 
-def page_home() -> None:
+def page_home(metrics: dict) -> None:
     st.markdown(
         """
         <div class="hero-card">
@@ -80,8 +73,8 @@ def page_home() -> None:
         unsafe_allow_html=True,
     )
 
-    online, status_text = check_api_status()
-    pill_class = "status-online" if online else "status-offline"
+    ready, status_text = is_model_ready()
+    pill_class = "status-online" if ready else "status-offline"
     st.markdown(
         f'<span class="status-pill {pill_class}">{status_text}</span>',
         unsafe_allow_html=True,
@@ -91,17 +84,17 @@ def page_home() -> None:
     with c1:
         metric_card("Algorithm", "Linear Regression", "🧠")
     with c2:
-        metric_card("R² Score", f"{METRICS.get('r2_score', 0):.3f}", "📈")
+        metric_card("R² Score", f"{metrics.get('r2_score', 0):.3f}", "📈")
     with c3:
-        metric_card("RMSE", f"{METRICS.get('rmse', 0):.2f}", "📉")
+        metric_card("RMSE", f"{metrics.get('rmse', 0):.2f}", "📉")
     with c4:
-        metric_card("MAE", f"{METRICS.get('mae', 0):.2f}", "🎯")
+        metric_card("MAE", f"{metrics.get('mae', 0):.2f}", "🎯")
 
     st.markdown("### Quick Start")
     st.markdown(
         """
         1. Open **Prediction** in the sidebar and enter your workout details.
-        2. Click **Predict** to call the FastAPI model endpoint.
+        2. Click **Predict** to run the trained model.
         3. Review calories, BMI, intensity, and personalized tips.
         4. Track sessions in **History** and export your log anytime.
         """
@@ -121,9 +114,9 @@ def page_prediction() -> None:
     st.markdown("## 🏋️ Workout Prediction")
     st.caption("Enter your session details — predictions use the notebook's exact feature order and preprocessing.")
 
-    online, _ = check_api_status()
-    if not online:
-        st.error("FastAPI backend is not reachable. Start it with: `uvicorn backend.app:app --reload`")
+    ready, status = is_model_ready()
+    if not ready:
+        st.error(f"Model is not available: {status}")
         return
 
     with st.form("prediction_form"):
@@ -151,18 +144,15 @@ def page_prediction() -> None:
             "body_temp": float(body_temp),
         }
 
-        with st.spinner("Calling prediction API..."):
+        with st.spinner("Running prediction..."):
             try:
-                result = get_client().predict(payload)
+                result = run_prediction(payload)
                 save_prediction(payload, result)
                 st.session_state["last_prediction"] = result
                 st.session_state["last_inputs"] = payload
                 st.success("Prediction complete!")
-            except RuntimeError as exc:
-                st.error(f"Prediction failed: {exc}")
-                return
             except Exception as exc:
-                st.error(f"Could not reach API: {exc}")
+                st.error(f"Prediction failed: {exc}")
                 return
 
     if "last_prediction" in st.session_state:
@@ -236,12 +226,12 @@ def page_history() -> None:
     st.line_chart(chart_df.set_index("timestamp")["predicted_calories"])
 
 
-def page_model_info() -> None:
+def page_model_info(metadata: dict, metrics: dict) -> None:
     st.markdown("## 🧪 Model Information")
     st.caption("Metrics and configuration extracted from the training notebook.")
 
-    if not METADATA:
-        st.warning("model_metadata.json not found. Run `python scripts/export_model.py` first.")
+    if not metadata:
+        st.warning("model_metadata.json not found.")
         return
 
     c1, c2 = st.columns(2)
@@ -251,19 +241,19 @@ def page_model_info() -> None:
             f"""
             | Field | Value |
             |---|---|
-            | **Algorithm** | {METADATA.get('algorithm', 'N/A')} |
-            | **Dataset** | {METADATA.get('dataset', 'N/A')} |
-            | **Author** | {METADATA.get('author', 'N/A')} |
+            | **Algorithm** | {metadata.get('algorithm', 'N/A')} |
+            | **Dataset** | {metadata.get('dataset', 'N/A')} |
+            | **Author** | {metadata.get('author', 'N/A')} |
             """
         )
     with c2:
         st.markdown("### Performance (validation set)")
-        st.metric("R² Score", f"{METRICS.get('r2_score', 0):.4f}")
-        st.metric("RMSE", f"{METRICS.get('rmse', 0):.4f}")
-        st.metric("MAE", f"{METRICS.get('mae', 0):.4f}")
+        st.metric("R² Score", f"{metrics.get('r2_score', 0):.4f}")
+        st.metric("RMSE", f"{metrics.get('rmse', 0):.4f}")
+        st.metric("MAE", f"{metrics.get('mae', 0):.4f}")
 
     st.markdown("### Features (exact notebook order)")
-    features = METADATA.get("feature_order", METADATA.get("features", []))
+    features = metadata.get("feature_order", metadata.get("features", []))
     for idx, feature in enumerate(features, start=1):
         st.markdown(f"{idx}. `{feature}`")
 
@@ -290,40 +280,56 @@ def page_about() -> None:
         """
         This production app wraps the **Calorie Expenditure Prediction** notebook by **Areeba Bushra**,
         converting a Colab-trained multivariate linear regression workflow into a deployable
-        FastAPI + Streamlit stack.
+        Streamlit dashboard.
 
         ### Architecture
-        - **Backend:** FastAPI loads `model.pkl` once at startup and serves `/health` and `/predict`.
-        - **Frontend:** Streamlit dashboard calls the API and persists predictions to `data/predictions_history.csv`.
+        - **Streamlit Cloud:** loads `backend/model.pkl` directly (no separate API server needed).
+        - **Local dev (optional):** set `CALORIE_API_URL=http://127.0.0.1:8000` to use FastAPI instead.
         - **Model:** scikit-learn `LinearRegression` on 7 features with R² ≈ 0.968 on the validation split.
 
         ### Repository
-        [ML-Model-Training — Calorie predictions](https://github.com/AreebaBushra/ML-Model-Training/tree/82e0affa4acad8c1e05e0d9324120d00864dc560/Calorie%20predictions_Multivariate%20Linear%20regression)
+        [ML-Model-Training — Calorie predictions](https://github.com/AreebaBushra/ML-Model-Training/tree/37ec22759908e0eedc83400778e73dec9116012c/Calorie%20predictions_Multivariate%20Linear%20regression)
 
-        ### How to run
+        ### Run locally
         ```bash
         pip install -r requirements.txt
-        uvicorn backend.app:app --reload
-        streamlit run frontend/app.py
+        streamlit run streamlit_app.py
         ```
         """
     )
 
 
-PAGES = {
-    "Home": page_home,
-    "Prediction": page_prediction,
-    "History": page_history,
-    "Model Information": page_model_info,
-    "About": page_about,
-}
+def main() -> None:
+    st.set_page_config(
+        page_title="Calorie Burn Predictor",
+        page_icon="🔥",
+        layout="wide",
+        initial_sidebar_state="expanded",
+    )
 
-with st.sidebar:
-    st.markdown("## 🔥 FitMetrics AI")
-    st.caption("Calorie Prediction Dashboard")
-    selection = st.radio("Navigation", list(PAGES.keys()), label_visibility="collapsed")
-    st.markdown("---")
-    online, status = check_api_status()
-    st.markdown(f"**Status:** {status}")
+    inject_css()
 
-PAGES[selection]()
+    metadata = load_metadata()
+    metrics = metadata.get("metrics", {})
+
+    pages = {
+        "Home": lambda: page_home(metrics),
+        "Prediction": page_prediction,
+        "History": page_history,
+        "Model Information": lambda: page_model_info(metadata, metrics),
+        "About": page_about,
+    }
+
+    with st.sidebar:
+        st.markdown("## 🔥 FitMetrics AI")
+        st.caption("Calorie Prediction Dashboard")
+        selection = st.radio("Navigation", list(pages.keys()), label_visibility="collapsed")
+        st.markdown("---")
+        _, status = is_model_ready()
+        st.markdown(f"**Status:** {status}")
+
+    pages[selection]()
+
+
+if __name__ == "__main__":
+    main()

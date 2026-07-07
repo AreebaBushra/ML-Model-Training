@@ -56,6 +56,50 @@ This model is trained to predict **calories burned** during physical activity us
 - A non-linear model (Random Forest, XGBoost, polynomial regression) may capture patterns this model misses.
 
 ## How to Run
+
+### Streamlit app (recommended — works locally and on Streamlit Cloud)
+
+```bash
+pip install -r requirements.txt
+streamlit run streamlit_app.py
+```
+
+Open **http://localhost:8501**
+
+### Optional: FastAPI backend (local development only)
+
+```bash
+uvicorn backend.app:app --reload --host 127.0.0.1 --port 8000
+```
+
+Set `CALORIE_API_URL=http://127.0.0.1:8000` if you want Streamlit to call the API instead of loading the model directly.
+
+---
+
+## Deploy on Streamlit Community Cloud
+
+1. Push this folder to GitHub (already at [ML-Model-Training](https://github.com/AreebaBushra/ML-Model-Training/tree/37ec22759908e0eedc83400778e73dec9116012c/Calorie%20predictions_Multivariate%20Linear%20regression)).
+2. Go to [share.streamlit.io](https://share.streamlit.io) and sign in with GitHub.
+3. Click **New app** and select:
+   - **Repository:** `AreebaBushra/ML-Model-Training`
+   - **Branch:** `main` (or your deployment branch)
+   - **Main file path:** `Calorie predictions_Multivariate Linear regression/streamlit_app.py`
+4. Click **Advanced settings** and set:
+   - **Python version:** 3.11
+5. Click **Deploy**.
+
+The app loads `backend/model.pkl` directly — no separate FastAPI server is required on Streamlit Cloud.
+
+**Required files in the repo (already included):**
+- `backend/model.pkl`
+- `backend/preprocessing.pkl`
+- `backend/model_metadata.json`
+- `requirements.txt`
+
+---
+
+## Notebook (original training)
+
 1. Open the notebook in Google Colab.
 2. Mount your Google Drive.
 3. Update the dataset path to where you saved the CSV file.
