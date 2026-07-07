@@ -61,6 +61,25 @@ async def unhandled_exception_handler(_: Request, exc: Exception):
     )
 
 
+@app.get("/", tags=["System"])
+async def root() -> dict:
+    return {
+        "service": "Calorie Prediction API",
+        "docs": "/docs",
+        "health": "/health",
+        "predict": "POST /predict",
+        "model_info": "/model-info",
+    }
+
+
+@app.get("/model-info", tags=["System"])
+async def model_info() -> dict:
+    bundle = get_model_bundle()
+    if bundle is None:
+        raise HTTPException(status_code=503, detail="Model is not loaded")
+    return bundle.metadata
+
+
 @app.get("/health", response_model=HealthResponse, tags=["System"])
 async def health_check() -> HealthResponse:
     bundle = get_model_bundle()

@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: calorie-prediction-api
+    runtime: python
+    rootDir: Calorie predictions_Multivariate Linear regression
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn backend.app:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.0"

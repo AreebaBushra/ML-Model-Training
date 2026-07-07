@@ -1,106 +1,126 @@
-# Calorie Expenditure Prediction
+# Calorie Expenditure Prediction API
 
-A simple linear regression project to predict calories burned during exercise.
+Production FastAPI service for predicting calories burned during exercise using multivariate linear regression.
 
-## Author
-Areeba Bushra
+**Author:** Areeba Bushra
 
-## Dataset Description
-- Source: [Calorie Expenditure Dataset (Google Drive)](https://drive.google.com/file/d/1tj_WGyspImVxlpzL1KSzu2fzLsTxPKWN/view?usp=sharing)
-- 750,000 training rows
-- 250,000 test rows
-- Target column: `Calories`
-- Features: Sex, Age, Height, Weight, Duration, Heart_Rate, Body_Temp
+## Model
 
-This model is trained to predict **calories burned** during physical activity using the following features:
+| Metric | Value |
+|--------|-------|
+| Algorithm | Multivariate Linear Regression |
+| R² Score | 0.9685 |
+| RMSE | 11.09 |
+| MAE | 8.09 |
+| Features | Gender, Age, Height, Weight, Duration, Heart Rate, Body Temperature |
 
-| Column       | Description |
-|--------------|-------------|
-| `id`         | Unique identifier for each sample (used for aligning predictions in the submission file). |
-| `Sex`        | Biological sex of the individual (`male` / `female`). Affects calorie expenditure due to physiological differences. |
-| `Age`        | Age of the individual in years. Influences metabolism and energy consumption. |
-| `Height`     | Height in centimeters. Affects BMI and indirectly influences energy needs. |
-| `Weight`     | Weight in kilograms. A key factor in energy burned during activity. |
-| `Duration`   | Duration of physical activity in minutes. Direct measure of exercise volume. |
-| `Heart_Rate` | Heart rate during activity (in beats per minute). Reflects intensity of the physical effort.
-| `Body_Temp`  | Body temperature during activity (°C). Indicates metabolic response to exertion. |
-| `Calories`   | **Target variable** — total calories burned during the activity session. |
+Gender encoding: `male = 1`, `female = 0` (no scaling — matches the training notebook).
 
-## What This Notebook Does
-1. Loads the dataset from Google Drive (Google Colab).
-2. Explores the data (info, statistics, missing values, boxplots).
-3. Encodes the `Sex` column (male = 1, female = 0).
-4. Checks correlation of each feature with `Calories`.
-5. Splits data into training and validation sets (80/20).
-6. Trains a simple linear regression on each individual feature to compare performance.
-7. Trains a multiple linear regression model using all features.
-8. Plots Duration vs Calories with regression line.
-9. Plots Actual vs Predicted calories.
-10. Reports model performance (R², RMSE, MAE).
+## Project structure
 
-## Tools / Libraries Used
-- pandas
-- numpy
-- matplotlib
-- seaborn
-- scikit-learn (LinearRegression, train_test_split, r2_score, mean_squared_error, mean_absolute_error)
-
-## Results
-- R² = 0.968 (model explains 96.8% of the variance in calorie burn)
-- Duration is the strongest single predictor (R² = 0.922 alone)
-- Heart Rate and Body Temp add extra predictive value
-
-## Limitations
-- Multicollinearity between Duration, Heart Rate, and Body Temp makes individual coefficients hard to interpret directly.
-- Some predictions came out negative since linear regression has no domain constraints; these were clipped to 1.
-- A non-linear model (Random Forest, XGBoost, polynomial regression) may capture patterns this model misses.
-
-## How to Run
-
-### Streamlit app (recommended — works locally and on Streamlit Cloud)
-
-```bash
-pip install -r requirements.txt
-streamlit run streamlit_app.py
+```
+Calorie predictions_Multivariate Linear regression/
+├── backend/
+│   ├── app.py              # FastAPI application
+│   ├── model_loader.py     # Loads model.pkl at startup
+│   ├── predictor.py        # Prediction logic (notebook-identical)
+│   ├── schemas.py          # Pydantic request/response models
+│   ├── utils.py            # BMI, intensity, suggestions
+│   ├── model.pkl           # Trained model
+│   ├── preprocessing.pkl   # Feature order + sex encoding
+│   └── model_metadata.json # Model metrics
+├── scripts/
+│   └── export_model.py     # Re-export model from CSV (optional)
+├── calorie_prediction_notebook.ipynb
+├── requirements.txt
+├── runtime.txt
+└── README.md
 ```
 
-Open **http://localhost:8501**
+## API endpoints
 
-### Optional: FastAPI backend (local development only)
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/` | Service info |
+| GET | `/health` | Health check |
+| GET | `/model-info` | Model metrics and feature list |
+| POST | `/predict` | Predict calories burned |
+| GET | `/docs` | Interactive Swagger UI |
+
+### Example prediction request
 
 ```bash
+curl -X POST https://YOUR-RENDER-URL.onrender.com/predict \
+  -H "Content-Type: application/json" \
+  -d '{
+    "gender": "male",
+    "age": 36,
+    "height": 189.0,
+    "weight": 82.0,
+    "duration": 26.0,
+    "heart_rate": 101.0,
+    "body_temp": 41.0
+  }'
+```
+
+## Run locally
+
+```bash
+cd "Calorie predictions_Multivariate Linear regression"
+pip install -r requirements.txt
 uvicorn backend.app:app --reload --host 127.0.0.1 --port 8000
 ```
 
-Set `CALORIE_API_URL=http://127.0.0.1:8000` if you want Streamlit to call the API instead of loading the model directly.
+Open **http://127.0.0.1:8000/docs** to test the API.
 
----
+## Deploy on Render
 
-## Deploy on Streamlit Community Cloud
+### Option A — Blueprint (recommended)
 
-1. Push this folder to GitHub (already at [ML-Model-Training](https://github.com/AreebaBushra/ML-Model-Training/tree/37ec22759908e0eedc83400778e73dec9116012c/Calorie%20predictions_Multivariate%20Linear%20regression)).
-2. Go to [share.streamlit.io](https://share.streamlit.io) and sign in with GitHub.
-3. Click **New app** and select:
-   - **Repository:** `AreebaBushra/ML-Model-Training`
-   - **Branch:** `main` (or your deployment branch)
-   - **Main file path:** `Calorie predictions_Multivariate Linear regression/streamlit_app.py`
-4. Click **Advanced settings** and set:
-   - **Python version:** 3.11
-5. Click **Deploy**.
+1. Push this repo to GitHub: [AreebaBushra/ML-Model-Training](https://github.com/AreebaBushra/ML-Model-Training)
+2. Log in to [dashboard.render.com](https://dashboard.render.com)
+3. Click **New +** → **Blueprint**
+4. Connect your GitHub account and select repository **ML-Model-Training**
+5. Render detects `render.yaml` at the repo root and creates the **calorie-prediction-api** web service
+6. Click **Apply** and wait for the deploy to finish (~3–5 minutes on free tier)
 
-The app loads `backend/model.pkl` directly — no separate FastAPI server is required on Streamlit Cloud.
+Your API will be live at: `https://calorie-prediction-api.onrender.com` (or similar)
 
-**Required files in the repo (already included):**
-- `backend/model.pkl`
-- `backend/preprocessing.pkl`
-- `backend/model_metadata.json`
-- `requirements.txt`
+### Option B — Manual web service
 
----
+1. Go to [dashboard.render.com](https://dashboard.render.com) → **New +** → **Web Service**
+2. Connect **AreebaBushra/ML-Model-Training**
+3. Configure:
 
-## Notebook (original training)
+| Setting | Value |
+|---------|-------|
+| **Name** | `calorie-prediction-api` |
+| **Root Directory** | `Calorie predictions_Multivariate Linear regression` |
+| **Runtime** | Python 3 |
+| **Build Command** | `pip install -r requirements.txt` |
+| **Start Command** | `uvicorn backend.app:app --host 0.0.0.0 --port $PORT` |
+| **Health Check Path** | `/health` |
 
-1. Open the notebook in Google Colab.
-2. Mount your Google Drive.
-3. Update the dataset path to where you saved the CSV file.
-4. Run all cells in order.
+4. Click **Create Web Service**
+
+### After deploy
+
+- Test health: `https://YOUR-URL.onrender.com/health`
+- API docs: `https://YOUR-URL.onrender.com/docs`
+- Model info: `https://YOUR-URL.onrender.com/model-info`
+
+> **Note:** On Render's free tier, the service sleeps after inactivity. The first request may take 30–60 seconds to wake up.
+
+## Re-export model (optional)
+
+If you have the training CSV locally:
+
+```bash
+python scripts/export_model.py
+```
+
+This regenerates `backend/model.pkl` using the exact notebook pipeline (`random_state=3`, 80/20 split).
+
+## Original notebook
+
+See `calorie_prediction_notebook.ipynb` for the full ML training workflow (Colab / exploratory analysis).
