@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: calorie-prediction-api
+    name: calories-expenditure-prediction
     runtime: python
     rootDir: Calorie predictions_Multivariate Linear regression
     buildCommand: pip install -r requirements.txt
